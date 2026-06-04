@@ -1,114 +1,179 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// Speler (Jij op de slee onderin het scherm)
-let player = { x: 400, y: 430, width: 40, height: 20, speed: 8 };
+// Speler met spring-variabelen
+let player = { 
+    x: 400, 
+    y: 430, 
+    z: 0,          // Hoogte in de lucht tijdens het springen
+    width: 45, 
+    height: 18, 
+    speed: 7,
+    speedZ: 0,     // Spring-snelheid
+    isJumping: false 
+};
 
-// Lijst om alle 3D bomen in op te slaan
 let obstacles = [];
 let score = 0;
 let gameOver = false;
 let keys = {};
+let gravity = 0.4;
+let speedLinesY = 200; // Voor het bewegende grondeffect
 
 window.addEventListener("keydown", (e) => keys[e.key] = true);
 window.addEventListener("keyup", (e) => keys[e.key] = false);
 
-// Functie om een nieuwe boom in de verte (aan de horizon) te maken
 function spawnObstacle() {
     obstacles.push({
-        x: 350 + Math.random() * 100, // Begint in het midden in de verte
-        y: 200,                       // De horizonlijn
-        scale: 0.05,                  // Begint super klein (ver weg)
-        speedX: (Math.random() - 0.5) * 6, // Waaierd uit naar links of rechts
-        speedY: 3                     // Komt naar voren gevlogen
+        x: 380 + (Math.random() - 0.5) * 40, 
+        y: 200,                       
+        scale: 0.02,                  
+        speedX: (Math.random() - 0.5) * 12, 
+        speedY: 2.5                     
     });
 }
 
-// Start direct met bomen maken
-setInterval(() => { if (!gameOver) spawnObstacle(); }, 800);
+setInterval(() => { if (!gameOver) spawnObstacle(); }, 600);
 
 function gameLoop() {
     if (gameOver) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+        ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#ff3333";
-        ctx.font = "bold 50px sans-serif";
-        ctx.fillText("CRASH! GAME OVER", 180, 230);
+        ctx.fillStyle = "#f43f5e";
+        ctx.font = "bold 52px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("CRASH!", canvas.width/2, 210);
         ctx.fillStyle = "white";
-        ctx.font = "20px sans-serif";
-        ctx.fillText("Score: " + score + " | Ververs de pagina om te herstarten", 200, 280);
+        ctx.font = "24px sans-serif";
+        ctx.fillText("Je eindscore is: " + score, canvas.width/2, 260);
+        ctx.fillStyle = "#38bdf8";
+        ctx.font = "16px sans-serif";
+        ctx.fillText("Druk op Ctrl+R om opnieuw te starten", canvas.width/2, 310);
         return;
     }
 
-    // 1. Scherm leegmaken (achtergrond verloop is geregeld in HTML/CSS)
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 2. Teken de horizon en de skibaan (3D perspectief lijnen)
-    ctx.fillStyle = "#7ec0ee"; // Lucht
+    // 1. Lucht en Horizon tekenen
+    ctx.fillStyle = "#7dd3fc"; 
     ctx.fillRect(0, 0, canvas.width, 200);
+
+    // 2. Bewegende sneeuwlijnen op de grond (voor snelheidsgevoel)
+    ctx.strokeStyle = "#e2e8f0";
+    ctx.lineWidth = 4;
+    speedLinesY += 4;
+    if (speedLinesY > 500) speedLinesY = 200;
     
-    ctx.strokeStyle = "#d0e0f0";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(350, 200); ctx.lineTo(0, 500);   // Linker rand van de berg
-    ctx.moveTo(450, 200); ctx.lineTo(800, 500); // Rechter rand van de berg
-    ctx.stroke();
+    for (let i = 0; i < 4; i++) {
+        let lineY = speedLinesY + (i * 75);
+        if (lineY > 500) lineY -= 300;
+        if (lineY > 200) {
+            let progress = (lineY - 200) / 300;
+            let w = progress * 400;
+            ctx.beginPath();
+            ctx.moveTo(400 - w, lineY);
+            ctx.lineTo(400 + w, lineY);
+            ctx.stroke();
+        }
+    }
 
-    // 3. Besturing van de slee (Speler)
-    if (keys["ArrowLeft"] || keys["a"]) { player.x -= player.speed; }
-    if (keys["ArrowRight"] || keys["d"]) { player.x += player.speed; }
+    // 3. Besturing (Sturen)
+    if (keys["ArrowLeft"] || keys["a"]) player.x -= player.speed;
+    if (keys["ArrowRight"] || keys["d"]) player.x += player.speed;
+    if (player.x < 80) player.x = 80;
+    if (player.x > 720) player.x = 720;
 
-    // Zorg dat de speler niet van het scherm afstuurt
-    if (player.x < 50) player.x = 50;
-    if (player.x > 750) player.x = 750;
+    // 4. Spring-logica (Spatiebalk of Pijl Omhoog)
+    if ((keys[" "] || keys["ArrowUp"] || keys["w"]) && !player.isJumping) {
+        player.speedZ = -7.5; // Kracht omhoog
+        player.isJumping = true;
+    }
 
-    // 4. Update en teken alle 3D bomen
+    if (player.isJumping) {
+        player.speedZ += gravity; // Zwaartekracht trekt je terug
+        player.z += player.speedZ;
+        
+        if (player.z >= 0) { // Geland op de grond
+            player.z = 0;
+            player.speedZ = 0;
+            player.isJumping = false;
+        }
+    }
+
+    // 5. Obstakels (3D bomen) updaten en tekenen
     for (let i = obstacles.length - 1; i >= 0; i--) {
         let o = obstacles[i];
         
-        // Boom beweegt naar voren en wordt groter (3D effect!)
         o.y += o.speedY;
-        o.x += o.speedX * (o.scale * 2); 
-        o.scale += 0.018; 
-        o.speedY += 0.15; // Versnelt naarmate hij dichterbij komt
+        o.x += o.speedX * (o.scale * 2.5);
+        o.scale += 0.016;
+        o.speedY += 0.14;
 
-        // Teken de 3D boom (een groene driehoek die groeit)
-        let treeWidth = 60 * o.scale;
-        let treeHeight = 100 * o.scale;
-        
-        ctx.fillStyle = "#1b5e20"; // Donkergroen dennenboom
+        let scaleW = o.scale * 85;
+        let scaleH = o.scale * 130;
+
+        // Boomstam tekenen
+        ctx.fillStyle = "#78350f";
+        ctx.fillRect(o.x - (scaleW * 0.15), o.y - (scaleH * 0.2), scaleW * 0.3, scaleH * 0.2);
+
+        // Bladeren (3 lagen groen voor echt 3D gevoel)
+        ctx.fillStyle = "#15803d"; // Laag 1 (groot)
         ctx.beginPath();
-        ctx.moveTo(o.x, o.y - treeHeight);
-        ctx.lineTo(o.x - treeWidth/2, o.y);
-        ctx.lineTo(o.x + treeWidth/2, o.y);
-        ctx.closePath();
-        ctx.fill();
+        ctx.moveTo(o.x, o.y - scaleH);
+        ctx.lineTo(o.x - scaleW/2, o.y - scaleH * 0.15);
+        ctx.lineTo(o.x + scaleW/2, o.y - scaleH * 0.15);
+        ctx.closePath(); ctx.fill();
 
-        // Check voor botsing als de boom heel dichtbij is (onderin het scherm)
-        if (o.y > 400 && o.y < 460) {
-            if (Math.abs(o.x - player.x) < (treeWidth/2 + player.width/2)) {
+        ctx.fillStyle = "#166534"; // Laag 2 (midden)
+        ctx.beginPath();
+        ctx.moveTo(o.x, o.y - scaleH * 1.1);
+        ctx.lineTo(o.x - scaleW/2.6, o.y - scaleH * 0.4);
+        ctx.lineTo(o.x + scaleW/2.6, o.y - scaleH * 0.4);
+        ctx.closePath(); ctx.fill();
+
+        ctx.fillStyle = "#14532d"; // Laag 3 (top)
+        ctx.beginPath();
+        ctx.moveTo(o.x, o.y - scaleH * 1.2);
+        ctx.lineTo(o.x - scaleW/3.5, o.y - scaleH * 0.65);
+        ctx.lineTo(o.x + scaleW/3.5, o.y - scaleH * 0.65);
+        ctx.closePath(); ctx.fill();
+
+        // Botsing detecteren (Inclusief check of je eroverheen springt!)
+        if (o.y > 410 && o.y < 460) {
+            let hitBoxX = Math.abs(o.x - player.x) < (scaleW/3 + player.width/2);
+            let playerIsTooLow = (player.z > -45); // Als je sprong niet hoog genoeg is (< 45px in de lucht)
+            
+            if (hitBoxX && playerIsTooLow) {
                 gameOver = true;
             }
         }
 
-        // Als de boom achter de speler verdwijnt, krijg je een punt
         if (o.y > 520) {
             obstacles.splice(i, 1);
             score++;
         }
     }
 
-    // 5. Teken de rode Slee (als een 3D blok op de voorgrond)
-    ctx.fillStyle = "#d32f2f";
-    ctx.fillRect(player.x - player.width/2, player.y, player.width, player.height);
-    // Onderkant van de slee (ijzers)
-    ctx.fillStyle = "#333";
-    ctx.fillRect(player.x - player.width/2 - 2, player.y + player.height, player.width + 4, 4);
+    // 6. Schaduw van de speler (blijft altijd op de grond)
+    ctx.fillStyle = "rgba(0,0,0,0.15)";
+    ctx.beginPath();
+    ctx.ellipse(player.x, player.y + player.height, player.width/1.5, 6, 0, 0, 2 * Math.PI);
+    ctx.fill();
 
-    // 6. Scorebord
-    ctx.fillStyle = "#1a1a1a";
-    ctx.font = "bold 24px sans-serif";
-    ctx.fillText("Gifts ontweken: " + score, 30, 40);
+    // 7. De Slee tekenen (verplaatst omhoog op basis van player.z)
+    let currentY = player.y + player.z; // player.z is negatief in de lucht
+    
+    ctx.fillStyle = "#e11d48"; // Felrode slee body
+    ctx.fillRect(player.x - player.width/2, currentY, player.width, player.height);
+    
+    ctx.fillStyle = "#94a3b8"; // IJzers onder de slee
+    ctx.fillRect(player.x - player.width/2 - 3, currentY + player.height, player.width + 6, 3);
+
+    // 8. Scorebord (Modern)
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "bold 22px sans-serif";
+    ctx.fillText("SCORE: " + score, 25, 45);
 
     requestAnimationFrame(gameLoop);
 }
