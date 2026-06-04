@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snow Rider 3D - Chromebook Console</title>
+    <title>Snow Rider 3D - Console Edition</title>
     <style>
         body, html {
             margin: 0;
@@ -68,34 +68,47 @@
 <body>
 
     <div id="cheat-bar">
-        <input type="text" id="cheat-input" placeholder="Voer commando in...">
+        <input type="text" id="cheat-input" placeholder="Enter command...">
         <button id="cheat-btn" onclick="executeCheat()">EXEC</button>
         <div id="cheat-msg">
-            [CONSOLE] Beschikbare commando's:<br>
-            • gifts [aantal] | name [tekst] | setbest [score]<br>
-            • noclip [on/off] | setplays [aantal]<br>
-            Sluiten: Ctrl + Zoeken + Alt
+            [CONSOLE] Available commands:<br>
+            • gifts [amount] | name [text] | setbest [score]<br>
+            • noclip [on/off] | setplays [amount]<br>
+            Close: Press Spacebar 5 times quickly
         </div>
     </div>
 
     <iframe id="game-frame" src="https://gamesroid.com" allowfullscreen></iframe>
 
     <script>
-        let keysPressed = {};
+        let spaceCount = 0;
+        let lastSpaceTime = 0;
 
-        // Luister naar Chromebook-specifieke toetsencombinatie (Ctrl + Meta/Zoeken + Alt)
+        // Luister naar 5x snel achter elkaar Spatiebalk indrukken
         window.addEventListener('keydown', (e) => {
-            keysPressed[e.key] = true;
-
-            // 'Meta' is de Zoeken/Launcher-toets (met het vergrootglas of de cirkel) op een Chromebook
-            if (keysPressed['Control'] && keysPressed['Meta'] && keysPressed['Alt']) {
-                e.preventDefault();
-                toggleCheatBar();
+            // Als de balk al open is en je typt een spatie, moet hij niet sluiten
+            if (document.activeElement === document.getElementById('cheat-input')) {
+                return;
             }
-        });
 
-        window.addEventListener('keyup', (e) => {
-            keysPressed[e.key] = false;
+            if (e.key === ' ' || e.key === 'Spacebar') {
+                const currentTime = new Date().getTime();
+                
+                // Als de tijd tussen drukken korter is dan 400 milliseconden, tel door
+                if (currentTime - lastSpaceTime < 400) {
+                    spaceCount++;
+                } else {
+                    spaceCount = 1;
+                }
+                
+                lastSpaceTime = currentTime;
+
+                if (spaceCount === 5) {
+                    e.preventDefault();
+                    toggleCheatBar();
+                    spaceCount = 0; // Reset de teller
+                }
+            }
         });
 
         function toggleCheatBar() {
@@ -126,7 +139,7 @@
                         const giftAmount = argument || '999';
                         storage.setItem('totalGift', giftAmount);
                         storage.setItem('gifts', giftAmount);
-                        msg.innerHTML = "[OK] Cadeautjes ingesteld op: " + giftAmount + ".<br>Ververs het spel om toe te passen.";
+                        msg.innerHTML = "[OK] Gifts set to: " + giftAmount + ".<br>Click game and press Ctrl+Shift+R to apply.";
                         msg.style.color = "#4ade80";
                         break;
 
@@ -135,10 +148,10 @@
                         if (newName) {
                             storage.setItem('playerName', newName);
                             storage.setItem('username', newName);
-                            msg.innerHTML = "[OK] Gebruikersnaam gewijzigd naar: '" + newName + "'.<br>Ververs het spel.";
+                            msg.innerHTML = "[OK] Name changed to: '" + newName + "'.<br>Refresh the game.";
                             msg.style.color = "#4ade80";
                         } else {
-                            msg.innerHTML = "[FOUT] Geen naam opgegeven. Gebruik: name [naam]";
+                            msg.innerHTML = "[ERROR] No name entered. Use: name [text]";
                             msg.style.color = "#fca5a5";
                         }
                         break;
@@ -147,7 +160,7 @@
                         const bestScore = argument || '1000';
                         storage.setItem('bestScore', bestScore);
                         storage.setItem('highscore', bestScore);
-                        msg.innerHTML = "[OK] Highscore ingesteld op: " + bestScore + ".<br>Ververs het spel.";
+                        msg.innerHTML = "[OK] Highscore set to: " + bestScore + ".<br>Refresh the game.";
                         msg.style.color = "#4ade80";
                         break;
 
@@ -155,7 +168,7 @@
                         const playsCount = argument || '100';
                         storage.setItem('totalPlays', playsCount);
                         storage.setItem('playCount', playsCount);
-                        msg.innerHTML = "[OK] Aantal gespeelde potjes ingesteld op: " + playsCount + ".";
+                        msg.innerHTML = "[OK] Play count set to: " + playsCount + ".";
                         msg.style.color = "#4ade80";
                         break;
 
@@ -163,25 +176,25 @@
                         if (argument === 'on') {
                             storage.setItem('godmode', 'true');
                             storage.setItem('invincible', 'true');
-                            msg.innerHTML = "[OK] Noclip / Godmode geactiveerd in opslag.<br>Ververs het spel om te proberen.";
+                            msg.innerHTML = "[OK] Noclip / Godmode activated.<br>Refresh game to test.";
                             msg.style.color = "#4ade80";
                         } else if (argument === 'off') {
                             storage.setItem('godmode', 'false');
                             storage.setItem('invincible', 'false');
-                            msg.innerHTML = "[OK] Noclip / Godmode gedeactiveerd.";
+                            msg.innerHTML = "[OK] Noclip disabled.";
                             msg.style.color = "#4ade80";
                         } else {
-                            msg.innerHTML = "[FOUT] Gebruik: noclip on OF noclip off";
+                            msg.innerHTML = "[ERROR] Use: noclip on OR noclip off";
                             msg.style.color = "#fca5a5";
                         }
                         break;
 
                     default:
-                        msg.innerHTML = "[FOUT] Onbekend commando. Beschikbaar:<br>gifts, name, setbest, setplays, noclip";
+                        msg.innerHTML = "[ERROR] Unknown command.<br>Available: gifts, name, setbest, setplays, noclip";
                         msg.style.color = "#fca5a5";
                 }
             } catch(e) {
-                msg.innerHTML = "[SYSTEM CRASH] De organisatiebeveiliging blokkeert opslagwijzigingen binnen dit iframe via scripts.";
+                msg.innerHTML = "[BEVEILIGING] Chromebook schoolbeveiliging blokkeert script-toegang tot de gameopslag.";
                 msg.style.color = "#ef4444";
             }
             
