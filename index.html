@@ -2,17 +2,19 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <title>Mijn Snow Rider 3D Kloon</title>
+    <title>Snow Rider 3D - Chromebook Edition</title>
     <style>
-        body { margin: 0; background: #1a1a1a; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; flex-direction: column; color: white; }
-        canvas { background: linear-gradient(#7ec0ee, #ffffff); border: 4px solid #ffffff; box-shadow: 0 10px 20px rgba(0,0,0,0.5); border-radius: 8px; }
-        p { font-size: 16px; margin-top: 15px; color: #aaa; }
+        body { margin: 0; background: #0f172a; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; flex-direction: column; color: white; overflow: hidden; }
+        h1 { margin-bottom: 5px; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+        canvas { background: linear-gradient(#bae6fd, #f1f5f9); border: 6px solid #38bdf8; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5); border-radius: 12px; }
+        p { font-size: 15px; margin-top: 12px; color: #94a3b8; }
+        b { color: #38bdf8; }
     </style>
 </head>
 <body>
-    <h1>SNOW RIDER Chromebook Editie</h1>
+    <h1>Snow Rider 3D</h1>
     <canvas id="gameCanvas" width="800" height="500"></canvas>
-    <p>Gebruik de <b>Pijltoetsen (Links / Rechts)</b> om de bomen te ontwijken!</p>
+    <p>Sturen: <b>Pijl links/rechts</b> | Springen: <b>Spatiebalk / Pijl omhoog</b></p>
     <script src="game.js"></script>
 </body>
 </html>
