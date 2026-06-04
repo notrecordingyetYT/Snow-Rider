@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snow Rider 3D - Advanced Developer Console</title>
+    <title>Snow Rider 3D - Chromebook Console</title>
     <style>
         body, html {
             margin: 0;
@@ -74,7 +74,7 @@
             [CONSOLE] Beschikbare commando's:<br>
             • gifts [aantal] | name [tekst] | setbest [score]<br>
             • noclip [on/off] | setplays [aantal]<br>
-            Sluiten: Ctrl + Shift + C
+            Sluiten: Ctrl + Zoeken + Alt
         </div>
     </div>
 
@@ -82,12 +82,13 @@
 
     <script>
         let keysPressed = {};
-        let noclipActive = false;
 
+        // Luister naar Chromebook-specifieke toetsencombinatie (Ctrl + Meta/Zoeken + Alt)
         window.addEventListener('keydown', (e) => {
             keysPressed[e.key] = true;
 
-            if (keysPressed['Control'] && keysPressed['Shift'] && (keysPressed['C'] || keysPressed['c'])) {
+            // 'Meta' is de Zoeken/Launcher-toets (met het vergrootglas of de cirkel) op een Chromebook
+            if (keysPressed['Control'] && keysPressed['Meta'] && keysPressed['Alt']) {
                 e.preventDefault();
                 toggleCheatBar();
             }
@@ -160,13 +161,11 @@
 
                     case 'noclip':
                         if (argument === 'on') {
-                            noclipActive = true;
                             storage.setItem('godmode', 'true');
                             storage.setItem('invincible', 'true');
-                            msg.innerHTML = "[OK] Noclip / Godmode geactiveerd in opslag.<br>Let op: werkt afhankelijk van spelversie na herstart.";
+                            msg.innerHTML = "[OK] Noclip / Godmode geactiveerd in opslag.<br>Ververs het spel om te proberen.";
                             msg.style.color = "#4ade80";
                         } else if (argument === 'off') {
-                            noclipActive = false;
                             storage.setItem('godmode', 'false');
                             storage.setItem('invincible', 'false');
                             msg.innerHTML = "[OK] Noclip / Godmode gedeactiveerd.";
@@ -182,7 +181,7 @@
                         msg.style.color = "#fca5a5";
                 }
             } catch(e) {
-                msg.innerHTML = "[SYSTEM CRASH] Browserbeveiliging (Same-Origin) blokkeert directe toegang tot de Unity frame storage.";
+                msg.innerHTML = "[SYSTEM CRASH] De organisatiebeveiliging blokkeert opslagwijzigingen binnen dit iframe via scripts.";
                 msg.style.color = "#ef4444";
             }
             
