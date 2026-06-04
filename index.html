@@ -3,80 +3,191 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snow Rider 3D</title>
+    <title>Snow Rider 3D - Advanced Developer Console</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #0b1329; font-family: sans-serif; user-select: none; }
-        #score-board { position: absolute; top: 25px; left: 25px; color: #ffffff; font-size: 28px; font-weight: 900; text-shadow: 0 4px 8px rgba(0,0,0,0.5); }
-        #score-board span { color: #00d2ff; }
-        #controls-tip { position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.7); font-size: 15px; background: rgba(0,0,0,0.4); padding: 8px 20px; border-radius: 20px; }
-        #screen-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 19, 41, 0.85); backdrop-filter: blur(4px); justify-content: center; align-items: center; flex-direction: column; cursor: pointer; }
-        #overlay-title { color: #ff3366; font-size: 64px; font-weight: 900; }
-        #btn-restart { background: linear-gradient(135deg, #00d2ff, #0066ff); color: white; border: none; padding: 15px 40px; font-size: 20px; font-weight: bold; border-radius: 30px; }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: monospace;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+        #cheat-bar {
+            display: none;
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 15, 30, 0.95);
+            border: 2px solid #39ff14;
+            border-radius: 6px;
+            padding: 12px;
+            box-shadow: 0 0 25px rgba(57, 255, 20, 0.4);
+            z-index: 9999;
+            width: 450px;
+        }
+        #cheat-input {
+            width: 78%;
+            padding: 8px;
+            background: #000;
+            border: 1px solid #22c55e;
+            color: #39ff14;
+            font-size: 14px;
+            font-family: monospace;
+            border-radius: 4px;
+            outline: none;
+        }
+        #cheat-btn {
+            width: 18%;
+            padding: 8px;
+            background: #15803d;
+            color: #39ff14;
+            border: 1px solid #22c55e;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: monospace;
+        }
+        #cheat-msg {
+            color: #4ade80;
+            font-size: 12px;
+            margin-top: 8px;
+            text-align: left;
+            line-height: 1.4;
+        }
     </style>
-    <script src="https://cloudflare.com"></script>
 </head>
 <body>
-    <div id="score-board">SCORE: <span id="scoreVal">0</span></div>
-    <div id="controls-tip">Sturen: <b>A / D</b> | Springen: <b>Spatiebalk</b></div>
-    <div id="screen-overlay" onclick="resetGame()"><div id="overlay-title">CRASH!</div><button id="btn-restart">HIER KLIKKEN OM OPNIEUW TE STARTEN</button></div>
+
+    <div id="cheat-bar">
+        <input type="text" id="cheat-input" placeholder="Voer commando in...">
+        <button id="cheat-btn" onclick="executeCheat()">EXEC</button>
+        <div id="cheat-msg">
+            [CONSOLE] Beschikbare commando's:<br>
+            • gifts [aantal] | name [tekst] | setbest [score]<br>
+            • noclip [on/off] | setplays [aantal]<br>
+            Sluiten: Ctrl + Shift + C
+        </div>
+    </div>
+
+    <iframe id="game-frame" src="https://gamesroid.com" allowfullscreen></iframe>
+
     <script>
-        let scene, camera, renderer, playerGroup, hill;
-        let obstacles = []; let score = 0; let gameOver = false; let speed = 0.8;
-        const sideSpeed = 0.26; const hillWidth = 40; const hillLength = 3000; const hillAngle = -Math.PI / 3;
-        let isJumping = false; let velocityY = 0; const gravity = -0.016; const jumpForce = 0.36;
-        const keys = { ArrowLeft: false, ArrowRight: false, a: false, d: false, ' ': false };
-        function initEngine() {
-            scene = new THREE.Scene(); scene.background = new THREE.Color(0xd0e7ff); scene.fog = new THREE.FogExp2(0xd0e7ff, 0.012);
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true; document.body.appendChild(renderer.domElement);
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.65); scene.add(ambientLight);
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.85); dirLight.position.set(15, 45, 25); scene.add(dirLight);
-            const hillGeometry = new THREE.PlaneGeometry(hillWidth, hillLength);
-            const hillMaterial = new THREE.MeshStandardMaterial({ color: 0xfafcff, roughness: 0.95 });
-            hill = new THREE.Mesh(hillGeometry, hillMaterial); hill.rotation.x = hillAngle; hill.position.set(0, -10, -hillLength / 2 + 500); scene.add(hill);
-            playerGroup = new THREE.Group(); const bodyGeo = new THREE.BoxGeometry(1.3, 0.35, 2.1);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xe11d48 }); const sledBody = new THREE.Mesh(bodyGeo, bodyMat); playerGroup.add(sledBody);
-            scene.add(playerGroup); window.addEventListener('keydown', (e) => { if(e.key in keys) keys[e.key] = true; });
-            window.addEventListener('keyup', (e) => { if(e.key in keys) keys[e.key] = false; });
-            generateInitialTrees(); animate();
-        }
-        function createTreeElement(zPos) {
-            const tree = new THREE.Group(); const trunkGeo = new THREE.CylinderGeometry(0.18, 0.28, 1.2, 8);
-            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x451a03 }); const trunk = new THREE.Mesh(trunkGeo, trunkMat); tree.add(trunk);
-            const leaveMat = new THREE.MeshStandardMaterial({ color: 0x064e3b }); const coneGeo = new THREE.ConeGeometry(1.6, 2.5, 10);
-            const cone = new THREE.Mesh(coneGeo, leaveMat); cone.position.y = 1.5; tree.add(cone);
-            const xPos = (Math.random() - 0.5) * (hillWidth - 5); const yPos = (zPos * Math.tan(hillAngle)) - 10;
-            tree.position.set(xPos, yPos, zPos); scene.add(tree); obstacles.push(tree);
-        }
-        function generateInitialTrees() { for (let i = 0; i < 45; i++) { createTreeElement(-120 - (i * 28)); } }
-        function resetGame() {
-            gameOver = false; score = 0; speed = 0.8; isJumping = false; velocityY = 0;
-            document.getElementById("scoreVal").innerText = "0"; document.getElementById("screen-overlay").style.display = "none";
-            playerGroup.position.set(0, 0, 0); obstacles.forEach(tree => scene.remove(tree)); obstacles = []; generateInitialTrees(); animate();
-        }
-        function animate() {
-            if (gameOver) return; requestAnimationFrame(animate);
-            let currentFloorY = (playerGroup.position.z * Math.tan(hillAngle)); playerGroup.position.z -= speed;
-            if (!isJumping) { playerGroup.position.y = currentFloorY; }
-            if (keys.ArrowLeft || keys.a) playerGroup.position.x -= sideSpeed; if (keys.ArrowRight || keys.d) playerGroup.position.x += sideSpeed;
-            if (playerGroup.position.x < -18) playerGroup.position.x = -18; if (playerGroup.position.x > 18) playerGroup.position.x = 18;
-            if (keys[' '] && !isJumping) { isJumping = true; velocityY = jumpForce; }
-            if (isJumping) { velocityY += gravity; playerGroup.position.y += velocityY; if (playerGroup.position.y <= currentFloorY) { playerGroup.position.y = currentFloorY; isJumping = false; velocityY = 0; } }
-            camera.position.set(playerGroup.position.x, playerGroup.position.y + 4.5, playerGroup.position.z + 9.5);
-            camera.lookAt(playerGroup.position.x, playerGroup.position.y + 0.8, playerGroup.position.z - 6);
-            for (let i = 0; i < obstacles.length; i++) {
-                let tree = obstacles[i];
-                if (tree.position.z > playerGroup.position.z + 15) {
-                    tree.position.z = playerGroup.position.z - 1200; tree.position.x = (Math.random() - 0.5) * 35;
-                    tree.position.y = (tree.position.z * Math.tan(hillAngle)) - 10; score++; document.getElementById("scoreVal").innerText = score; speed += 0.004;
-                }
-                let distX = Math.abs(playerGroup.position.x - tree.position.x); let distZ = Math.abs(playerGroup.position.z - tree.position.z);
-                if (distX < 1.3 && distZ < 1.4 && (playerGroup.position.y - tree.position.y) < 2.4) { gameOver = true; document.getElementById("screen-overlay").style.display = "flex"; }
+        let keysPressed = {};
+        let noclipActive = false;
+
+        window.addEventListener('keydown', (e) => {
+            keysPressed[e.key] = true;
+
+            if (keysPressed['Control'] && keysPressed['Shift'] && (keysPressed['C'] || keysPressed['c'])) {
+                e.preventDefault();
+                toggleCheatBar();
             }
-            renderer.render(scene, camera);
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keysPressed[e.key] = false;
+        });
+
+        function toggleCheatBar() {
+            const bar = document.getElementById('cheat-bar');
+            if (bar.style.display === 'block') {
+                bar.style.display = 'none';
+            } else {
+                bar.style.display = 'block';
+                document.getElementById('cheat-input').focus();
+            }
         }
-        window.onload = initEngine;
+
+        function executeCheat() {
+            const rawInput = document.getElementById('cheat-input').value;
+            const input = rawInput.toLowerCase().trim();
+            const msg = document.getElementById('cheat-msg');
+            const iframe = document.getElementById('game-frame');
+            
+            const parts = input.split(' ');
+            const command = parts[0];
+            const argument = parts[1];
+
+            try {
+                const storage = iframe.contentWindow.localStorage;
+
+                switch(command) {
+                    case 'gifts':
+                        const giftAmount = argument || '999';
+                        storage.setItem('totalGift', giftAmount);
+                        storage.setItem('gifts', giftAmount);
+                        msg.innerHTML = "[OK] Cadeautjes ingesteld op: " + giftAmount + ".<br>Ververs het spel om toe te passen.";
+                        msg.style.color = "#4ade80";
+                        break;
+
+                    case 'name':
+                        const newName = rawInput.substring(5).trim();
+                        if (newName) {
+                            storage.setItem('playerName', newName);
+                            storage.setItem('username', newName);
+                            msg.innerHTML = "[OK] Gebruikersnaam gewijzigd naar: '" + newName + "'.<br>Ververs het spel.";
+                            msg.style.color = "#4ade80";
+                        } else {
+                            msg.innerHTML = "[FOUT] Geen naam opgegeven. Gebruik: name [naam]";
+                            msg.style.color = "#fca5a5";
+                        }
+                        break;
+
+                    case 'setbest':
+                        const bestScore = argument || '1000';
+                        storage.setItem('bestScore', bestScore);
+                        storage.setItem('highscore', bestScore);
+                        msg.innerHTML = "[OK] Highscore ingesteld op: " + bestScore + ".<br>Ververs het spel.";
+                        msg.style.color = "#4ade80";
+                        break;
+
+                    case 'setplays':
+                        const playsCount = argument || '100';
+                        storage.setItem('totalPlays', playsCount);
+                        storage.setItem('playCount', playsCount);
+                        msg.innerHTML = "[OK] Aantal gespeelde potjes ingesteld op: " + playsCount + ".";
+                        msg.style.color = "#4ade80";
+                        break;
+
+                    case 'noclip':
+                        if (argument === 'on') {
+                            noclipActive = true;
+                            storage.setItem('godmode', 'true');
+                            storage.setItem('invincible', 'true');
+                            msg.innerHTML = "[OK] Noclip / Godmode geactiveerd in opslag.<br>Let op: werkt afhankelijk van spelversie na herstart.";
+                            msg.style.color = "#4ade80";
+                        } else if (argument === 'off') {
+                            noclipActive = false;
+                            storage.setItem('godmode', 'false');
+                            storage.setItem('invincible', 'false');
+                            msg.innerHTML = "[OK] Noclip / Godmode gedeactiveerd.";
+                            msg.style.color = "#4ade80";
+                        } else {
+                            msg.innerHTML = "[FOUT] Gebruik: noclip on OF noclip off";
+                            msg.style.color = "#fca5a5";
+                        }
+                        break;
+
+                    default:
+                        msg.innerHTML = "[FOUT] Onbekend commando. Beschikbaar:<br>gifts, name, setbest, setplays, noclip";
+                        msg.style.color = "#fca5a5";
+                }
+            } catch(e) {
+                msg.innerHTML = "[SYSTEM CRASH] Browserbeveiliging (Same-Origin) blokkeert directe toegang tot de Unity frame storage.";
+                msg.style.color = "#ef4444";
+            }
+            
+            document.getElementById('cheat-input').value = '';
+        }
     </script>
 </body>
 </html>
